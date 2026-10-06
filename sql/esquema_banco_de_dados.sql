@@ -664,6 +664,13 @@ on conflict (nome, cidade) do nothing;
 --
 -- O nome inicial vem de raw_user_meta_data->>'nome' (se for
 -- informado no cadastro) ou do prefixo do e-mail.
+--
+-- Como o signup publico esta DESABILITADO, apenas quem tem
+-- acesso ao painel Authentication > Users consegue criar
+-- contas. Por isso, todo novo usuario entra automaticamente
+-- como ADM (escopo = 'adm').
+-- Se um dia o signup publico for reativado, REVERTER isto
+-- para escopo = 'user'.
 -- ============================================================
 
 create or replace function public.criar_usuario_apos_signup()
@@ -673,14 +680,15 @@ security definer
 set search_path = ''
 as $$
 begin
-    insert into public.usuarios (id, nome, email)
+    insert into public.usuarios (id, nome, email, escopo)
     values (
         new.id,
         coalesce(
             nullif(trim(new.raw_user_meta_data->>'nome'), ''),
             split_part(new.email, '@', 1)
         ),
-        new.email
+        new.email,
+        'adm'   -- 👈 todo novo usuario entra como ADM
     )
     on conflict (id) do nothing;
     return new;
